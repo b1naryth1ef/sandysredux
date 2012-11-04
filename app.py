@@ -38,7 +38,7 @@ def templateFid(s):
 def routeLogin(pw=None):
     if pw == pword:
         session['loggedin'] = True
-        return redirect('/responses')
+        return redirect('/')
     flash('Bad password!', 'error')
     return redirect('/')
 
