@@ -1,0 +1,55 @@
+{% extends "nbase.html" %}
+
+{% block content %}
+<!-- <div class="row">
+    <div class="span12" style="text-align: center;">
+        <h2>If you find someone requring something you have in your area, click the "Help this person" button to get in touch with them!</h2
+        >
+        <br />
+          <p class="text-success">Green indicates a request that has had response (but may NOT be solved yet)</p>
+          <p class="text-error">Red indicates a request that has been marked as urgent by the poster</p>
+          <p class="text-warning">Orange indicates a request that has not yet been responded too, and is not urgent</p>
+    </div>
+</div> -->
+{% if schools %}
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>School Name/ID</th>
+        <th>Request</th>
+        <th>Location</th>
+        <th>Contact Name</th>
+        <th>More Info</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in schools.items %}
+      <tr {% if i.active %} class="warning"{% else %} class="warning" {% endif %}>
+        <td>{{ i.schoolname}}</td>
+        <td>{{ i.needs }}</td>
+        <td>{{ i.location }}</td>
+        <td>{{ i.contactname }}</td>
+        <td><a class="btn btn-info"  href="/mod/school/{{ i.id }}">More Info</a>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if schools.has_next %}
+  <a class="btn btn-primary" href="/find/{{ schools.next_num }}">Next Page &raquo;</a>
+  {% endif %}
+  {% if schools.has_prev %}
+  <a class="btn btn-primary" href="/find/{{ schools.prev_num }}">&laquo; Previous Page</a>
+  {% endif %}
+{% else %}
+  <h3>Request from: {{ s.schoolname }}</h3>
+  <p><b>Request:</b> {{ s.needs }}</p>
+  <p><b>Location:</b> {{ s.location }}</p>
+  <p><b>Contact Name:</b> {{ s.contactname }}</p>
+  <p><b>Contact Phone:</b> {{ s.contactphone }}</p>
+  <p><b>Contact Email:</b> {{ s.contactemail }}</p>
+  <a class="btn btn-danger" href="/mod/a/del_school/{{ s.id }}">Delete Request</a>
+  <a class="btn btn-success" href="/mod/a/mark_school/{{ s.id }}">Mark Request Done</a>
+<hr>
+{% endif %}
+{% endblock %}
+{% block footer %}{% endblock %}

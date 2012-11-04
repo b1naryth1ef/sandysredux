@@ -1,32 +1,53 @@
-{% extends "base.html" %}
+{% extends "nbase.html" %}
 {% block title %}Help Someone{% endblock %}
 
 {% block content %}
 <div class="container">
   <div class="row">
     <div class="span4">
-        <div class="span4">
-          <h3>Help Someone</h3>
-          <p>
-            Your offering to help:<b> {{ p.name }}</b> <br />
-            Who needs:<b> {{ p.request }}</b><br />
-            Nearby:<b> {{ p.location }}</b> <br />
-            If your request is valid, we'll forward contact details to you
-          </p>
-        </div>
-        <form class="form-horizontal" name="canhelp" action="/internals/canhelp" method="post">
-          <input type="hidden" name="id" value="{{ p.id }}">
+        <form class="form-horizontal" name="canhelp" action="/internals/provider" method="post">
           <div class="control-group">
             <label class="control-label" for="name">Name:</label>
-            <div class="controls"><input type="text" name="name" id="name" value="" /></div>
+            <div class="controls"><input type="text" name="name" value="" /></div>
           </div>
           <div class="control-group">
-            <label class="control-label" for="have">I have:</label><br />
-            <div class="controls"><textarea cols="40" rows="5" name="have"></textarea></div>
+            <label class="control-label" for="name">Organization Name:</label>
+            <div class="controls"><input type="text" name="orgname" value="" /></div>
           </div>
           <div class="control-group">
-            <label class="control-label" for="phonenum">Phone Number (or other viable contact):</label>
-            <div class="controls"><input type="tel" name="phonenum" id="phonenum" value="" />
+            <label class="control-label" for="name">Title:</label>
+            <div class="controls"><input type="text" name="title" value="" /></div>
+          </div>
+          <div class="control-group">
+            <label class="control-label" for="email">Email:</label>
+            <div class="controls"><input type="text" name="email" id="email" value="" /></div>
+          </div>
+          <div class="control-group">
+            <label class="control-label" for="phone">Phone:</label>
+            <div class="controls"><input type="text" name="phone" id="phone" value="" /></div>
+          </div>
+          {% for k in form.values() %}
+            {% set o_loop = loop %}
+            <div class="control-group">
+              <label class="control-label">{{ k[0] }}</label>
+              {% for i in k[1] %}
+                <div class="controls"><input type="checkbox" name='{{ o_loop.index }}_{{ i|fid }}'> {{ i }}</div>
+              {% endfor %}
+              
+              {% if k[2] %}
+              <br />
+              <div class="control-group">
+                <label class="control-label">Other: </label>
+                <div class="controls"><input type="text" name="{{ o_loop.index }}_other" value="" /></div>
+              </div></div>
+              {% endif %}
+            <br />
+          {% endfor %}
+          <div class="control-group">
+            <label class="control-label">When can schools expect to receive the donation?</label>
+            <div class="controls"><input type="date" name="timeframe"></div>
+          </div>
+          <div class="control-group">
             <input type="submit" style="btn btn-primary btn-large; float: right" value="Submit"/>  </div>
           </div>
         </form>

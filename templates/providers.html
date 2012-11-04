@@ -1,0 +1,50 @@
+{% extends "nbase.html" %}
+
+{% block content %}
+  {% if providers %}
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Organization Name</th>
+          <th>Contact Name</th>
+          <th>Providables</th>
+          <th>Support Locations</th>
+          <th>More Info</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in providers.items %}
+        <tr {% if i.active %} class="warning"{% else %} class="warning" {% endif %}>
+          <td>{{ i.orgname }}</td>
+          <td>{{ i.name }}</td>
+          <td>{{ i.nicefield('support') }}</td>
+          <td>{{ i.nicefield('locations') }}</td>
+          <td><a class="btn btn-info"  href="/mod/provider/{{ i.id }}">Info</a>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if providers.has_next %}
+    <a class="btn btn-primary" href="/mod/providers/{{ providers.next_num }}">Next Page &raquo;</a>
+    {% endif %}
+    {% if providers.has_prev %}
+    <a class="btn btn-primary" href="/mod/providers/{{ providers.prev_num }}">&laquo; Previous Page</a>
+    {% endif %}
+  {% else %}
+    <h3>Submission from: {{ p.orgname }}</h3>
+    <p><b>Contact Name:</b> {{ p.name }}</p>
+    <p><b>Contact Title:</b> {{ p.title }}</p>
+    <p><b>Contact Email:</b> {{ p.email }}</p>
+    <p><b>Contact Phone:</b>{{ p.phone }}</p>
+    <p><b>Locations:</b> {{ p.nicefield('locations') }}</p>
+    <p><b>Providables:</b> {{ p.nicefield('support') }}</p>
+    <p><b>Grades:</b> {{ p.nicefield('grade') }}</p>
+    <p><b>Delivery:</b> {{ p.nicefield('delivery') }}</p>
+    <p><b>Timeframe:</b> {{ p.timeframe }}</p>
+    <p><b>Cost:</b> {{ p.nicefield('cost') }}</p>
+    <a class="btn btn-danger" href="/mod/a/del_provider/{{ p.id }}">Delete Submission</a>
+    <a class="btn btn-success" href="/mod/a/mark_provider/{{ p.id }}">Mark Submission Done</a>
+    <hr>
+  {% endif %}
+{% endblock %}
+{% block footer %}{% endblock %}

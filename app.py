@@ -1,6 +1,6 @@
 from flask import Flask, flash, render_template, request, redirect, url_for, session
 from datetime import datetime
-from data import Request, FollowUp
+from data import Provider, School
 import os, requests
 
 app = Flask(__name__)
@@ -8,12 +8,30 @@ app.secret_key = "asdfalsdkfg38asdfl38as8dfa8"
 pword = os.getenv('SANDYLOGIN', 'test')
 captcha_priv = os.getenv('CAPTCHAPRIV', None)
 
+form_key = {
+    1:['Boroughs you can support:', ["Bronx", 'Brooklyn', 'Manhattan', 'Queens', 'Staten Island'], False],
+    2:['What type of support can you provide?', ['Furniture', 'Office Equipment', 'Office Supples', 'Classroom Materials', 'Art Supplies', 'Books', 'Art Residencies', 'Student Programs'], True],
+    3:['Which grade levels is your support most appropriate?', ['All Grade Levels', 'Primary Grades', 'Elementary School', 'Middle School', 'High School'], False],
+    4:['How will donations be delievered to schools?', ['US Mail', 'Other Mail Carriers', 'Truck/Courier Service', 'School Pickup'], True],
+    5:['Is this donation being provided at NO cost to schools?', ['YES', 'NO'], True]}
+
+f_db_key = {
+    1:'locations',
+    2:'support',
+    3:'grade',
+    4:'delivery',
+    5:'cost'}
+
 def isMod():
     return session.get('loggedin', False)
 
 def render(*args, **kwargs):
     kwargs['ismod'] = isMod()
     return render_template(*args, **kwargs)
+
+@app.template_filter('fid')
+def templateFid(s):
+    return s.replace(' ', '_').lower().strip()
 
 #-- Static Routes --
 @app.route('/login/<pw>')
@@ -32,152 +50,130 @@ def routeLogout():
 @app.route('/')
 def routeIndex(): return render('index.html')
 
-@app.route('/post')
+@app.route('/school')
 def routePost(): return render('post.html')
 
-@app.route('/find') #@TODO Pagination (sort invalid)
-@app.route('/find/<page>')
-def routeSearch(page=1):
-    try: reqs = Request.objects().paginate(page=int(page), per_page=35) #@NOTE Hacky af
-    except: return redirect('/find/%s' % (int(page)-1))
-    return render('find.html', reqs=reqs, page=int(page))
+@app.route('/provider')
+def routeProvide(): return render('help.html', form=form_key)
 
-@app.route('/responses')
-@app.route('/responses/<page>')
-def routeResponese(page=1):
-    try: reqs = FollowUp.objects().paginate(page=int(page), per_page=35)
-    except: return redirect('/responses/%s' % (int(page)-1))
-    return render('mod.html', reqs=reqs, page=int(page))
+@app.route('/mod/schools')
+@app.route('/mod/schools/<page>')
+@app.route('/mod/school/<id>')
+def routeSchools(id=None, page=1):
+    if not isMod():
+        flash('You must be logged in to do that!', 'error')
+        return redirect('/')
+    if not id:
+        try: r = School.objects().paginate(page=int(page), per_page=20)
+        except: 
+            flash("You've reached the end of schools listing!", 'warning')
+            return redirect('/mod/schools/%s' % int(page)-1)
+        return render('schools.html', schools=r)
+    else:
+        q = School.objects(id=id)
+        if not len(q):
+            flash("No school request with ID '%s'" % id)
+            return redirect('/')
+        return render('schools.html', s=q[0])
+
+@app.route('/mod/providers')
+@app.route('/mod/providers/<page>')
+@app.route('/mod/provider/<id>')
+def routeProviders(id=None, page=1):
+    if not isMod():
+        flash('You must be logged in to do that!', 'error')
+        return redirect('/')
+    if not id:
+        try: r = Provider.objects().paginate(page=int(page), per_page=20)
+        except: 
+            flash("You've reached the end of providerss listing!", 'warning')
+            return redirect('/mod/schools/%s' % int(page)-1)
+        return render('providers.html', providers=r)
+    else:
+        q = Provider.objects(id=id)
+        if not len(q):
+            flash("No provider request with ID '%s'" % id)
+            return redirect('/')
+        return render('providers.html', p=q[0])
 
 # -- Dynamic Stuffs --
-@app.route('/mod/<action>/<id>')
+@app.route('/mod/a/<action>/<id>')
 def routeMod(id=None, action=None):
     if not isMod(): return redirect(url_for('/find'))
-    if not id: return render('find.html', reqs=Request.objects())
-    if action == 'valid_resp':
-        q = FollowUp.objects(id=id)
-        if not len(q): 
-            flash("Invalid response ID!", 'error')
-            return redirect('/responses')
-        q = q[0]
-        q.valid = True
+    if not id:
+        flash('Error processing your request!', 'error')
+        return redirect('/')
+    act = action.split('_', 1)
+    if act[-1] == 'provider':
+        q = Provider.objects(id=id)
+        text = 'submission'
+        url = '/mod/provider'
+    elif act[-1] == 'school':
+        q = School.objects(id=id)
+        text = 'request'
+        url ='/mod/school'
+    if not len(q):
+        flash('Error processing your request! (Could not find %s)' % text, 'error')
+        return redirect(url+'s')
+    q = q[0]
+    if act[0] == 'del':
+        q.delete()
+        flash('Deleted %s!' % text, 'success')
+        return redirect(url+'s')
+    elif act[0] == 'mark':
+        q.active = False
         q.save()
-        flash('Marked response as valid!', 'success')
-        return redirect('/responses')
-
-    elif action == 'delete_resp':
-        q = FollowUp.objects(id=id)
-        if not len(q): 
-            flash("Invalid response ID!", 'error')
-            return redirect('/responses')
-        q[0].delete()
-        flash('Deleted response!', 'success')
-        return redirect('/responses')
-    elif action == 'delete_req':
-        q = Request.objects(id=id)
-        if not len(q):
-            flash("Invalid response ID!", 'error')
-            return redirect('/find')
-        q[0].delete()
-        flash("Marked request %s as invalid!" % id, 'success')
-        return redirect('/find')
-
-@app.route('/help/<id>')
-def routeHelp(id):
-    if not id:
-        return redirect(url_for('/find'))
-    p = Request.objects(id=id)
-    if not len(p):
-        return "No such request ID '%s'" % id
-    return render('help.html', p=p[0])
-
-@app.route('/resp/<id>')
-def routeResp(id):
-    if not id:
-        return redirect(url_for('/post'))
-    p = FollowUp.objects(id=id)
-    if not len(p):
-        return "No such response ID '%s'" % id
-    if p[0].valid:
-        flash("""Your help is needed! Please click <a href='/resp/%s/info'>here</a> to get contact information! 
-        Make sure to follow up on this page to help us keep efforts organized and managed!""" % (p[0].id), 'success')
-        return render('base.html')
-    else:
-        flash("Your post is still waiting moderation!", 'error')
-        return render('base.html', autoref=True)
-
-@app.route('/resp/<id>/info')
-def routeRespInfo(id):
-    if not id:
-        return redirect(url_for('/post'))
-    p = FollowUp.objects(id=id)
-    if not len(p): 
-        return "No such response ID '%s'" % id
-    if not p[0].valid:
-        return redirect(url_for('/resp/%s' % id))
-    p = p[0]
-    p.connected = True
-    p.entry.connected = True
-    p.entry.save()
-    p.save()
-    flash("Please contact the person with this information: %s" % p.entry.contact, 'success') #@TODO More info here?
-    return render('base.html')
-
-def checkCaptcha():
-    if not captcha_priv: return True
-    k = {
-        'privatekey':captcha_priv,
-        'remoteip':request.remote_addr,
-        'challenge':request.form.get('recaptcha_challenge_field'),
-        'response':request.form.get('recaptcha_response_field')
-    }
-    r = requests.get('http://www.google.com/recaptcha/api/verify', params=k)
-    print r.text
-    return r.text.startswith('true')
+        flash('Marked %s as done!' % text, 'success')
+        return redirect(url+'/%s' % id)
 
 @app.route('/internals/<route>', methods=['POST'])
 def internals(route=None):
-    if route == 'needhelp':
-        if not checkCaptcha():
-            flash('The captcha was incorrect!', 'error')
-            return redirect('/post')
+    if route == 'school':
         for k, v in request.form.items():
             if not v: 
                 flash('No fields can be empty!', 'error')
-                return redirect('/post')
-        obj = Request(
-            name=request.form.get('name'),
-            urgent={'on':True, 'off':False, None:False}[request.form.get('urgent')],
-            request=request.form.get('request'),
-            contact=request.form.get('phonenum'),
-            location=request.form.get('location'))
+                return redirect('/school')
+        obj = School(
+            contactname=request.form['name'],
+            needs=request.form['request'],
+            location=request.form['location'],
+            schoolname=request.form['sname'],
+            contactphone=request.form['phonenum'],
+            contactemail=request.form['email'])
         obj.save()
-        flash("Your request has been submitted to the system! We'll try to get to it ASAP.<br />Request ID: %s" % obj.id, 'success')
-        return redirect('/post')
+        flash('Your request has been submitted to the system! Reference ID: "%s"' % obj.id, 'success')
+        return redirect('/')
 
-    elif route == "canhelp":
+    elif route == "provider": #This would be horrible if we pushed this into heavy production (form injection)
+        obj = Provider()
+        for k in f_db_key.values():
+            setattr(obj, k, [])
+        val = form_key.keys()
         for k, v in request.form.items():
-            if not v: 
-                flash('You must give a value for %s! <a href="/help/%s">Try again</a>' % (k, request.form.get('id')), 'error')
-                return redirect('/find')
+            if '_' in k:
+                id, name = k.split('_', 1)
+                if name == 'other' and request.form.get(k): 
+                    name = 'Other: "%s"' % request.form.get(k)
+                getattr(obj, f_db_key[int(id)]).append(name)
+                if int(id) in val:
+                    val.remove(int(id))
+            else:
+                if not v:
+                    flash('All fields are required!', 'error')
+                    return redirect('/provider')
+        if len(val):
+            flash("You must check at least ONE box in each section!")
+            return redirect('/provider')
 
-        p = Request.objects(id=request.form.get('id'))
-        if not len(p): 
-            flash('Could not find the request ID "%s"' % id, 'error')
-            return redirect('/find')
-
-        p = p[0]
-        obj = FollowUp(
-            name=request.form.get('name'),
-            cangive=request.form.get('have'),
-            contact=request.form.get('phonenum'),
-            entry=p)
+        obj.name = request.form['name']
+        obj.title = request.form['title']
+        obj.orgname = request.form['orgname']
+        obj.email = request.form['email']
+        obj.phone = request.form['phone']
+        obj.timeframe = request.form['timeframe']
         obj.save()
-        p.responses.append(obj)
-        flash("""
-            Your response has been filed, please check back at <a href="/resp/%s">your response page</a> often. 
-            We'll update the page as soon as you can help!""" % (obj.id), 'success')
-        return redirect('/find')
+        flash('Added your submission! Reference ID: "%s" (you may want to write this down)' % obj.id, 'success')
+        return redirect('/')
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.getenv('PORT', 5000)))
