@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Find requests{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="span12" style="text-align: center;">
+        <h2>If you find someone requring something you have in your area, click the "Help this person" button to get in touch with them!</h2
+        >
+        <br />
+          <p class="text-success">Green indicates a request that has had response (but may NOT be solved yet)</p>
+          <p class="text-error">Red indicates a request that has been marked as urgent by the poster</p>
+          <p class="text-warning">Orange indicates a request that has not yet been responded too, and is not urgent</p>
+    </div>
+</div>
+
+
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Request</th>
+      <th>Location</th>
+      <th>Provide Help{% if ismod %} / Delete{% endif %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for i in reqs.items %}
+    <tr {% if i.connected %} class="success"{% elif i.urgent %} class="error" {% else %} class="warning" {% endif %}>
+      <td>{{ i.name }}</td>
+      <td>{{ i.request }}</td>
+      <td>{{ i.location }}</td>
+      <td><a class="btn btn-success"  href="/help/{{ i.id }}">Help this person &raquo;</a>
+        {% if ismod %}
+          <a class="btn btn-danger" href="/mod/delete_req/{{ i.id }}">Mark as invalid (delete)</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<a class="btn btn-success"  href="/find/{{ reqs.page+1 }}">Next Page &raquo;</a>
+{% if page != 1 %}
+<a class="btn btn-success"  href="/find/{{ reqs.page-1 }}">&laquo; Previous Page</a>
+{% endif %}
+
+      <hr>
+{% endblock %}
+{% block footer %}{% endblock %}
