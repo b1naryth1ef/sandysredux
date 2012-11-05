@@ -1,7 +1,7 @@
 from flask import Flask, flash, render_template, request, redirect, url_for, session
 from datetime import datetime
-from data import Provider, School
-import os, requests
+from data import Provider, School, Admin
+import os, requests, smtplib, string, bcrypt
 
 app = Flask(__name__)
 app.secret_key = "asdfalsdkfg38asdfl38as8dfa8"
@@ -22,6 +22,28 @@ f_db_key = {
     4:'delivery',
     5:'cost'}
 
+def hashPw(pw):
+    return bcrypt.hashpw(pw, bcrypt.gensalt(12))
+
+def checkPw(pw, hashed):
+    return bcrypt.hashpw(pw, hashed) == hashed
+
+def sendMail(to, id):
+    subject = "Sandy School Support Submission Recieved"
+    text = """
+    We have recieved your submission to Sandy School Support! Thank you so much for you support!
+    You submission reference number is: %s""" % id
+    b = string.join((
+            "From: %s" % "noreply@hydr0.com",
+            "To: %s" % to,
+            "Subject: %s" % subject,
+            "",
+            text
+            ), "\r\n")
+    server = smtplib.SMTP('localhost')
+    server.sendmail("noreply@hydr0.com", [to], b)
+    server.quit()
+
 def isMod():
     return session.get('loggedin', False)
 
@@ -34,12 +56,14 @@ def templateFid(s):
     return s.replace(' ', '_').lower().strip()
 
 #-- Static Routes --
-@app.route('/login/<pw>')
-def routeLogin(pw=None):
-    if pw == pword:
+@app.route('/login', methods=['POST'])
+def routeLogin():
+    u = Admin.objects(username=request.form.get('user')) 
+    if len(u) and checkPw(request.form.get('pw'), u[0].password):
         session['loggedin'] = True
+        flash('Welcome back %s!' % u[0].username, 'success')
         return redirect('/')
-    flash('Bad password!', 'error')
+    flash('Invalid login details!', 'error')
     return redirect('/')
 
 @app.route('/logout')
@@ -55,6 +79,13 @@ def routePost(): return render('post.html')
 
 @app.route('/provider')
 def routeProvide(): return render('help.html', form=form_key)
+
+@app.route('/mod')
+def routeMody():
+    if not isMod():
+        flash('You must be logged in to do that!', 'error')
+        return redirect('/')
+    return render('admin.html', users=Admin.objects())
 
 @app.route('/mod/schools')
 @app.route('/mod/schools/<page>')
@@ -97,12 +128,28 @@ def routeProviders(id=None, page=1):
         return render('providers.html', p=q[0])
 
 # -- Dynamic Stuffs --
-@app.route('/mod/a/<action>/<id>')
+@app.route('/mod/a/<action>', methods=['GET', 'POST'])
+@app.route('/mod/a/<action>/<id>', methods=['GET', 'POST'])
 def routeMod(id=None, action=None):
     if not isMod(): return redirect(url_for('/find'))
+    if action == 'adduser':
+        if request.form.get('user') and request.form.get('pw'):
+            u = Admin(username=request.form.get('user'),
+                    password=hashPw(request.form.get('pw')))
+            u.save()
+            flash('Added user "%s" successfully!' % request.form.get('user'), 'success')
+            return redirect('/mod')
+    elif action =='rmvuser':
+        q = Admin.objects(id=id)
+        if len(q):
+            q[0].delete()
+            flash('Deleted user successfully!', 'success')
+            return redirect('/mod')
+        flash('Error deleting user!', 'error')
+        return redirect('/mod')
     if not id:
         flash('Error processing your request!', 'error')
-        return redirect('/')
+        return redirect('/mod')
     act = action.split('_', 1)
     if act[-1] == 'provider':
         q = Provider.objects(id=id)

@@ -25,6 +25,10 @@
         margin: 60px 0;
         text-align: center;
       }
+      .cont {
+        margin: 60px 0;
+        text-align: center;
+      }
       .jumbotron h1 {
         font-size: 72px;
         line-height: 1;
@@ -52,9 +56,10 @@
         <ul class="nav nav-pills pull-right">
           <li><a href="/">Home</a></li>
           {% if ismod %}
-            <li><a href="/mod/schools">View Requests</a></li>
-            <li><a href="/mod/providers">View Submissions</a></li>
+            <li><a href="/mod">Admin</a></li>
             <li><a href="/logout">Logout</a></li>
+          {% else %}
+            <li><a href="#log" data-toggle="modal">Login</a></li>
           {% endif %}
         </ul>
         <h3 class="muted">SandySchools</h3>
@@ -72,6 +77,22 @@
       {% endblock %}
 
     </div> <!-- /container -->
+    <div class="modal hide fade" id="log">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h3>Login</h3>
+      </div>
+      <div class="modal-body">
+        <form class="form-inline" action="/login" method="post">
+          <input type="text" class="input-small" placeholder="Username" name="user">
+          <input type="password" class="input-small" placeholder="Password" name="pw">
+          <button type="submit" class="btn btn-primary">Sign in</button>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <a href="#" data-dismiss="modal" class="btn">Close</a>
+      </div>
+    </div>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
 
